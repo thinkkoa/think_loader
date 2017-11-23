@@ -1,5 +1,7 @@
 # think_loader
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/thinkkoa/think_loader.svg)](https://greenkeeper.io/)
+
 Loader for ThinkKoa
 
 # Install
