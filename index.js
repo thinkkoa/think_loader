@@ -42,23 +42,27 @@ const loader = function (loadPath, options, skip) {
  * @returns 
  */
 const walk = function (loadPath, dir, skip = false) {
-    dir = path.resolve(loadPath, dir);
-    const exist = fs.existsSync(dir);
-    let list = [];
-    if (!exist) {
-        return list;
-    }
-    const files = fs.readdirSync(dir);
-    let p;
-    for (let file of files) {
-        p = fs.statSync(path.resolve(dir, file));
-        if (!skip && p.isFile()) {
-            list.push(path.resolve(dir, file));
-        } else if (p.isDirectory()) {
-            list = list.concat(walk(loadPath, path.resolve(dir, file), false));
+    try {
+        dir = path.resolve(loadPath, dir);
+        const exist = fs.existsSync(dir);
+        let list = [];
+        if (!exist) {
+            return list;
         }
+        const files = fs.readdirSync(dir);
+        let p;
+        for (let file of files) {
+            p = fs.statSync(path.resolve(dir, file));
+            if (!skip && p.isFile()) {
+                list.push(path.resolve(dir, file));
+            } else if (p.isDirectory()) {
+                list = list.concat(walk(loadPath, path.resolve(dir, file), false));
+            }
+        }
+        return list;
+    }catch(e){
+        throw Error(`${dir}: ${e.message}`);
     }
-    return list;
 };
 
 /**
@@ -75,9 +79,8 @@ const cleanCache = function (modulePath) {
         // }
         // require.cache[modulePath] = null;
         delete require.cache[modulePath];
-    } catch (e) {
-        return;
-    }
+    } catch (e) {}
+    return;
 };
 
 /**
@@ -101,24 +104,27 @@ const load = function (loadPath, options = {}) {
         return items;
     }
     let name = '', tempPath = '', regExp = new RegExp(`${options.suffix}$`);
-    for (let key in paths) {
-        tempPath = paths[key].replace(/(\\|\/\/)/g, '/');
-        name = path.relative(path.resolve(loadPath, options.root), tempPath);
-        if (regExp.test(name)) {
-            name = name.slice(0, name.lastIndexOf(options.suffix));
-            /*eslint-disable no-loop-func */
-            options.filter.map(v => {
-                name = name.replace(v, '');
-            });
-            if (name) {
-                //clear require cache
-                cleanCache(tempPath);
-                items[name] = lib.require(tempPath);
+    try{
+        for (let key in paths) {
+            tempPath = paths[key].replace(/(\\|\/\/)/g, '/');
+            name = path.relative(path.resolve(loadPath, options.root), tempPath);
+            if (regExp.test(name)) {
+                name = name.slice(0, name.lastIndexOf(options.suffix));
+                /*eslint-disable no-loop-func */
+                options.filter.map(v => {
+                    name = name.replace(v, '');
+                });
+                if (name) {
+                    //clear require cache
+                    cleanCache(tempPath);
+                    items[name] = lib.require(tempPath);
+                }
             }
         }
+        return items;
+    }catch(e){
+        throw Error(`${tempPath}: ${e.message}`);
     }
-
-    return items;
 };
 
 module.exports = loader;
